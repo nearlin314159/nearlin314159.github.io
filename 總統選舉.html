@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+    
+    <head>
+        <script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
+        <link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
+        <style type="text/css">
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            h2,
+            h3 {
+                margin: 10px;
+                font-size: 1.2em;
+            }
+            
+            h3 {
+                font-size: 1em;
+            }
+            
+            p {
+                font-size: 0.85em;
+                margin: 10px;
+                text-align: left;
+            }
+            /**
+            * Create a position for the map
+            * on the page */
+            #map {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 100%;
+            }
+
+            /**
+            * Set rules for how the map overlays
+            * (information box and legend) will be displayed
+            * on the page. */
+            .map-overlay {
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                background: rgba(255, 255, 255, 0.8);
+                margin-right: 20px;
+                font-family: Arial, sans-serif;
+                overflow: auto;
+                border-radius: 3px;
+            }
+            
+            #features {
+                top: 0;
+                height: 200px;
+                margin-top: 20px;
+                width: 500px;
+            }
+
+            #legend {
+                padding: 10px;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                line-height: 18px;
+                height: 270px;
+                margin-bottom: 40px;
+                width: 230px;
+            }
+
+            .legend-key {
+                display: inline-block;
+                border-radius: 20%;
+                width: 10px;
+                height: 10px;
+                margin-right: 5px;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div id='map'></div>
+        <div class='map-overlay' id='features'><h2>2020總統選舉得票地圖</h2>
+            <div id='pd'><p>移動游標查看各區域票數分配情形</p>
+            <div id='pd'><p>點選右上角按鈕以查看全螢幕地圖</p></div></div></div>
+        <div class='map-overlay' id='legend'></div>
+
+        <script>
+            mapboxgl.accessToken = 'pk.eyJ1IjoiZm94MTM3NSIsImEiOiJja2VoOTl1bW8wbHE5MnJvNzd0cDJzbWIzIn0.ASvXZjgb_TFclGl3cKlX-A';
+            var map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/fox1375/ckenwuied0kzw1anzk3rzdblk', // stylesheet location
+                center: [121.52, 24.88], // starting position [lng, lat]
+                zoom: 9.4, // starting zoom
+                maxZoom: 22,
+                minZoom: 6
+            });
+            map.addControl(new mapboxgl.FullscreenControl({container: document.querySelector('body')}));
+            map.on('load', function() {
+                var layers = ['民進黨國民黨得票率差距','60%+', '50%+', '40%+', '30%+', '20%+', '10%+', '0%+',
+                              '0%-', '-10%', '-20%', '-30%', '-40%', '-50%', '-60%'];
+                var colors = ['','#006100', '#007500', '#008f00', '#00a800', '#00bd00', '#00db00', '#ceffce',
+                              '#ACD6FF', '#66b3ff', '#46a3ff', '#2894ff', '#0080ff', '#005ab5', '#003060'];
+
+                map.addSource('villmap', {
+                    type: 'geojson',
+                    data: 'https://drive.google.com/file/d/1hN2aJVLlFHMK5W0cmJIOmMSRvNJ8Kxd3/view?usp=sharing'
+                    });
+                
+                for (i = 0; i < layers.length; i++) {
+                    var layer = layers[i];
+                    var color = colors[i];
+                    var item = document.createElement('div');
+                    var key = document.createElement('span');
+                    key.className = 'legend-key';
+                    key.style.backgroundColor = color;
+                    
+                    var value = document.createElement('span');
+                    value.innerHTML = layer;
+                    item.appendChild(key);
+                    item.appendChild(value);
+                    legend.appendChild(item);
+                }
+
+            });
+
+                map.on('mousemove', function(e) {
+                var village = map.queryRenderedFeatures(e.point, {
+                    layers: ['prsd2020-71xdox']
+                });
+                var town = map.queryRenderedFeatures(e.point, {
+                    layers: ['prsd2020dis-355837']
+                });
+                var county = map.queryRenderedFeatures(e.point, {
+                    layers: ['prsd2020coun-9qodiv']
+                });
+
+                if (village.length > 0 && map.getZoom() >= 9.5) {
+                    map.getCanvas().style.cursor = 'pointer';
+                    map.setFeatureState(
+                        { source: 'states', id: hoveredStateId },
+                        { hover: true }
+                        );
+                    document.getElementById('pd').innerHTML = '<h3><strong>' + village[0].properties.intg_vlnm + '</strong></h3>' +
+                        '<table><thead><tr><th>號次</th><th>候選人</th><th>推薦政黨</th><th>得票數</th><th>得票率(%)</th></tr></thead>' +
+                        '<tbody><tr><td style= "text-align: center;">1</td><td>' +
+                            village[0].properties.name1 + '</td><td>' +
+                            village[0].properties.partyname1 + '</td><td style="text-align: right;">' +
+                            village[0].properties.votes1 + '</td><td style="text-align: right;">' +
+                            village[0].properties.percent1.toFixed(2) +
+                        '<tbody><tr><td style= "text-align: center;">2</td><td>' +
+                            village[0].properties.name2 + '</td><td>' +
+                            village[0].properties.partyname2 + '</td><td style="text-align: right;">' +
+                            village[0].properties.votes2 + '</td><td style="text-align: right;">' +
+                            village[0].properties.percent2.toFixed(2) +
+                        '<tbody><tr><td style= "text-align: center;">3</td><td>' +
+                            village[0].properties.name3 + '</td><td>' +
+                            village[0].properties.partyname3 + '</td><td style="text-align: right;">' +
+                            village[0].properties.votes3 + '</td><td style="text-align: right;">' +
+                            village[0].properties.percent3.toFixed(2);
+                } else if (town.length > 0 && map.getZoom() >= 7.9){
+                    map.getCanvas().style.cursor = 'pointer';
+                    document.getElementById('pd').innerHTML = '<h3><strong>' + town[0].properties.dis_name + '</strong></h3>' +
+                        '<table><thead><tr><th>號次</th><th>候選人</th><th>推薦政黨</th><th>得票數</th><th>得票率(%)</th></tr></thead>' +
+                        '<tbody><tr><td style= "text-align: center;">1</td><td>' +
+                            town[0].properties.name1 + '</td><td>' +
+                            town[0].properties.partyname1 + '</td><td style="text-align: right;">' +
+                            town[0].properties.votes1 + '</td><td style="text-align: right;">' +
+                            town[0].properties.percent1.toFixed(2) +
+                        '<tbody><tr><td style= "text-align: center;">2</td><td>' +
+                            town[0].properties.name2 + '</td><td>' +
+                            town[0].properties.partyname2 + '</td><td style="text-align: right;">' +
+                            town[0].properties.votes2 + '</td><td style="text-align: right;">' +
+                            town[0].properties.percent2.toFixed(2) +
+                        '<tbody><tr><td style= "text-align: center;">3</td><td>' +
+                            town[0].properties.name3 + '</td><td>' +
+                            town[0].properties.partyname3 + '</td><td style="text-align: right;">' +
+                            town[0].properties.votes3 + '</td><td style="text-align: right;">' +
+                            town[0].properties.percent3.toFixed(2);
+                } else if (county.length > 0 && map.getZoom() < 7.9){
+                    map.getCanvas().style.cursor = 'pointer';
+                    document.getElementById('pd').innerHTML = '<h3><strong>' + county[0].properties.coun_name + '</strong></h3>' +
+                        '<table><thead><tr><th>號次</th><th>候選人</th><th>推薦政黨</th><th>得票數</th><th>得票率(%)</th></tr></thead>' +
+                        '<tbody><tr><td style= "text-align: center;">1</td><td>' +
+                            county[0].properties.name1 + '</td><td>' +
+                            county[0].properties.partyname1 + '</td><td style="text-align: right;">' +
+                            county[0].properties.votes1 + '</td><td style="text-align: right;">' +
+                            county[0].properties.percent1.toFixed(2) +
+                        '<tbody><tr><td style= "text-align: center;">2</td><td>' +
+                            county[0].properties.name2 + '</td><td>' +
+                            county[0].properties.partyname2 + '</td><td style="text-align: right;">' +
+                            county[0].properties.votes2 + '</td><td style="text-align: right;">' +
+                            county[0].properties.percent2.toFixed(2) +
+                        '<tbody><tr><td style= "text-align: center;">3</td><td>' +
+                            county[0].properties.name3 + '</td><td>' +
+                            county[0].properties.partyname3 + '</td><td style="text-align: right;">' +
+                            county[0].properties.votes3 + '</td><td style="text-align: right;">' +
+                            county[0].properties.percent3.toFixed(2);
+                } else {
+                    map.getCanvas().style.cursor = 'grab';
+                    document.getElementById('pd').innerHTML =
+                    '<p>1.用滾輪進行zoom in/out以查看不同地理層級的資料</p><p>2.移動游標查看各區域票數分配情形</p><p>3.點選右上角按鈕以查看全螢幕地圖</p>';
+                }
+            
+            });
+            
+        </script>
+    </body>
+</html>
